@@ -35,6 +35,8 @@ def filter_not_none(iterable):
 def get_random_items(values, length):
     if length == -1:
         length = len(values)
+    else:
+        length = min(length, len(values))
     return random.sample(values, length)
 
 
