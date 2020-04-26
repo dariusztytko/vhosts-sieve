@@ -61,6 +61,11 @@ Virtual host candidates validation is performed as follow:
 1. Responses for virtual host candidates are compared to the reference response
     * If the response is "similar", virtual host candidate is skipped
     * Otherwise (response is not "similar"), virtual host candidate is marked as a valid virtual host
+1. To increase chance of success, the following extra headers are sent:
+    * X-Forwarded-For: 127.0.0.1
+    * X-Originating-IP: [127.0.0.1]
+    * X-Remote-IP: 127.0.0.1
+    * X-Remote-Addr: 127.0.0.1
 1. Additionally, if too many valid virtual hosts are discovered (e.g. any subdomain is valid), validation is stopped and the result is marked as "Stopped"
 
 Please notice that response status code is not taken into consideration. The main assumption is that everything other than reference response is worth to analyse in details. Even 4xx and 5xx responses.
