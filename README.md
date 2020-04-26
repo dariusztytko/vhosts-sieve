@@ -56,12 +56,14 @@ To discover virtual hosts, the following steps are performed:
 
 ### Virtual host candidates validation
 Virtual host candidates validation is performed as follow:
-1. Request with the random virtual host (Host header) is sent
-2. Response is saved as a reference
-3. Responses for virtual host candidates are compared to the reference response
+1. Request with the random (invalid) virtual host (Host header) is sent
+1. Response is saved as a reference
+1. Responses for virtual host candidates are compared to the reference response
     * If the response is "similar", virtual host candidate is skipped
     * Otherwise (response is not "similar"), virtual host candidate is marked as a valid virtual host
-4. Additionally, if too many valid virtual hosts are discovered (e.g. any subdomain is valid), validation is stopped and the result is marked as "Stopped"
+1. Additionally, if too many valid virtual hosts are discovered (e.g. any subdomain is valid), validation is stopped and the result is marked as "Stopped"
+
+Please notice that response status code is not taken into consideration. The main assumption is that everything other than reference response is worth to analyse in details. Even 4xx and 5xx responses.
 
 ## Optimization
 For the large networks with thousands subdomains, it may take many hours to check all virtual host candidates. The following options can be used to speed up the process:

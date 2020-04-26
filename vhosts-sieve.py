@@ -616,6 +616,9 @@ def main():
             vhosts = Pool.map(VhostsFinder, (resolved_domains, scanned_ips, ))
             if vhosts:
                 Results.save(vhosts)
+            else:
+                Logger.info('')
+                Logger.info('No vhosts found')
 
 
 if __name__ == '__main__':
