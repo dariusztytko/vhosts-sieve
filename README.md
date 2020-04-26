@@ -12,7 +12,7 @@ Get a list of subdomains (e.g. using [Amass](https://github.com/OWASP/Amass))
 ```
 $ amass enum -v -passive -o domains.txt -d example.com -d example-related.com
 ```
-Use vhost-sieve.py to find vhosts
+Use vhosts-sieve.py to find virtual hosts
 ```
 $ python3 vhosts-sieve.py -d domains.txt -o vhosts.txt
 Max domains to resolve: -1
@@ -33,7 +33,7 @@ Finding vhosts (active IPs: 1, vhost candidates: 7)...
 
 Saved results (4 vhosts)
 ```
-Output file contains discovered vhosts in the following format
+Output file contains discovered virtual hosts in the following format
 ```
 165.22.264.81 80 http False zxcv.example.com 301
 165.22.264.81 443 https False zxcv.example.com 200 dev.example.com 200 admin.exmaple.com 401
@@ -42,34 +42,34 @@ Each line contains the following information:
 * IP address
 * Port number
 * Detected protocol (HTTP or HTTPS)
-* Stopped flag (please see [How it works](#how-it-works))
-* List of discovered vhosts (with response status code)
+* "Stopped" flag (please see [How it works](#how-it-works))
+* List of discovered virtual hosts (with the response status code)
 
 ## How it works
-The following steps are performed to discover vhosts:
+To discover virtual hosts, the following steps are performed:
 1. Domains from the input file are resolved to IP addresses (IPv4)
 1. Depending on the resolving result, domains are divided into two groups:
     * Resolved domains
-    * Non-resolved domains (**vhost candidates**)
-1. IP addresses of the resolved domains are scanned for the common web ports (default: 80, 443, 8000, 8080, 8443)
-1. Vhost candidates are validated on each open port
+    * Non-resolved domains (**virtual host candidates**)
+1. IP addresses of the resolved domains are scanned for the web ports (default: 80, 443, 8000, 8080, 8443)
+1. Virtual host candidates are validated on each open port
 
-### Vhost candidates validation
-Vhost candidates validation is performed as follow:
-1. Request with the random vhost (Host header) is sent
+### Virtual host candidates validation
+Virtual host candidates validation is performed as follow:
+1. Request with the random virtual host (Host header) is sent
 2. Response is saved as a reference
-3. Responses for vhost candidates are compared to the reference response
-    * If the response is "similar", vhost candidate is skipped
-    * Otherwise (response is not "similar"), vhost candidate is marked as a valid vhost
-4. Additionally, if too many valid vhosts are discovered (e.g. any subdomain is valid), validation is stopped and the result is marked as "Stopped"
+3. Responses for virtual host candidates are compared to the reference response
+    * If the response is "similar", virtual host candidate is skipped
+    * Otherwise (response is not "similar"), virtual host candidate is marked as a valid virtual host
+4. Additionally, if too many valid virtual hosts are discovered (e.g. any subdomain is valid), validation is stopped and the result is marked as "Stopped"
 
 ## Optimization
-For the large networks with thousands subdomains, it may take many hours to check all vhost candidates. The following options can be used to speed up the process:
-* Default scanned ports 80, 443, 8000, 8080, 8443 can be reduced, e.g. to 443 only (-p, --ports-to-scan)
+For the large networks with thousands subdomains, it may take many hours to check all virtual host candidates. The following options can be used to speed up the process:
+* Default scanned ports 80, 443, 8000, 8080, 8443 can be limited, e.g. to 443 only (-p, --ports-to-scan)
 * Number of the threads can be increased (-t, --threads-number)
 * Number of the domains to resolve can be limited (--max-domains)
 * Number of the IP addresses to scan can be limited (--max-ips)
-* Number of the vhost candidates to check can be limited (--max-vhost-candidates) 
+* Number of the virtual host candidates to check can be limited (--max-vhost-candidates)
 * Timeouts can be reduced (--timeout-tcp, --timeout-http)
 
 Additionally, it is recommended to use -v (verbosity) option to see the results continuously.
