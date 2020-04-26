@@ -210,7 +210,7 @@ class DomainsResolver(object):
         if not is_public_ip:
             Logger.error('No public IPs found')
         if not is_non_public_domain:
-            Logger.error('No non-public domains found')
+            Logger.error('No non-resolvable domains (vhost candidates) found')
         return False
 
     def __init__(self, domain):
