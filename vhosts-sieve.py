@@ -289,14 +289,15 @@ class IpsScanner(object):
         for scheme in schemes:
             try:
                 url = '%s://%s:%d' % (scheme, self._ip, port)
-                requests.get(
+                r = requests.get(
                     url,
                     headers=self._headers,
                     allow_redirects=False,
                     verify=False,
                     timeout=options['timeout_http']
                 )
-                return scheme
+                if r.status_code != 400:
+                    return scheme
             except requests.exceptions.RequestException:
                 pass
 
@@ -339,11 +340,11 @@ class Logger(object):
 class Pool(object):
     @staticmethod
     def map(job_class, init_args):
-        args_list = job_class.get_args_list(*init_args)
-        ProgressTracker.instance().reset(len(args_list))
-        Logger.info('')
-        job_class.show_start_info(args_list)
         with ThreadPoolExecutor(options['threads_number']) as executor:
+            args_list = job_class.get_args_list(*init_args)
+            Logger.info('')
+            job_class.show_start_info(args_list)
+            ProgressTracker.instance().reset(len(args_list))
             results = filter_not_none(executor.map(job_class.run, args_list))
             if job_class.validate_results(results):
                 return results
@@ -382,6 +383,8 @@ class ProgressTracker(object):
 
     def reset(self, total):
         self._done_counter = 0
+        self._last_log_info_timestamp = None
+        self._start_timestamp = None
         self._total = total
 
     def _get_left_time(self, now):
@@ -555,7 +558,7 @@ class VhostsFinder(object):
                 if error:
                     error_series_length += 1
                     if error_series_length > self._ERROR_SERIES_LENGTH_LIMIT:
-                        Logger.verbose('Stopped because too many errors (ip: %s, service: %s)' % (self._ip, service))
+                        Logger.verbose('Stopped because of too many errors (ip: %s, service: %s)' % (self._ip, service))
                         stopped = True
                         break
                 else:
@@ -563,7 +566,7 @@ class VhostsFinder(object):
                 if vhost:
                     valid_vhosts_series_length += 1
                     if valid_vhosts_series_length > self._VALID_VHOSTS_SERIES_LENGTH_LIMIT:
-                        Logger.verbose('Stopped because too many valid vhosts (ip: %s, service: %s)' % (
+                        Logger.verbose('Stopped because of too many valid vhosts (ip: %s, service: %s)' % (
                             self._ip, service
                         ))
                         stopped = True
