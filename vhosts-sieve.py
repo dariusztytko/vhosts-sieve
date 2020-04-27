@@ -283,21 +283,17 @@ class IpsScanner(object):
             return result
 
     def _detect_scheme(self, port):
-        schemes = ['http', 'https']
-        if port in [443, 8443]:
-            schemes = ['https', 'http']
-        for scheme in schemes:
+        for scheme in ['https', 'http']:
             try:
                 url = '%s://%s:%d' % (scheme, self._ip, port)
-                r = requests.get(
+                requests.get(
                     url,
                     headers=self._headers,
                     allow_redirects=False,
                     verify=False,
                     timeout=options['timeout_http']
                 )
-                if r.status_code != 400:
-                    return scheme
+                return scheme
             except requests.exceptions.RequestException:
                 pass
 
