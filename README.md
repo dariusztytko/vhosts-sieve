@@ -72,7 +72,7 @@ Please notice that response status code is not taken into consideration. The mai
 
 ### SNI
 For the HTTPS protocol, it may be useful to send virtual host candidate name via Host header and SNI (TLS extension).
-Use --enable-sni option to enable SNI support.
+Use *--enable-sni* option to enable SNI support.
 It is recommended to make a scan twice (with SNI enabled and without it) to get more relevant results.
 
 ## Optimization
