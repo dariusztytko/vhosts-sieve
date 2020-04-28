@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
-from threading import Lock
 from urllib.parse import urlparse
 
 import argparse
@@ -14,9 +13,10 @@ import requests.packages.urllib3
 import socket
 import string
 import sys
+import threading
 import time
 
-VERSION = '1.0'
+VERSION = '1.1'
 
 # # # # # # # # # # #
 # global options
@@ -38,6 +38,11 @@ def get_random_items(values, length):
     else:
         length = min(length, len(values))
     return random.sample(values, length)
+
+
+def get_random_vhost(length=8):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for _ in range(length)) + '.com'
 
 
 def get_unique_list(values):
@@ -67,6 +72,11 @@ class ArgsParser(object):
             '-v', '--verbose',
             help='show detailed messages',
             action='store_true',
+        )
+        parser.add_argument(
+            '--enable-sni',
+            help='enable sending vhost candidate name via SNI extension',
+            action='store_true'
         )
         parser.add_argument(
             '--max-domains',
@@ -136,6 +146,7 @@ class ArgsParser(object):
             'domains_file': args.domains_file,
             'output_file': args.output_file,
             'ports': args.ports_to_scan,
+            'sni_enabled': args.enable_sni,
             'threads_number': args.threads_number,
             'timeout_http': args.timeout_http,
             'timeout_tcp': args.timeout_tcp,
@@ -234,6 +245,38 @@ class DomainsResolver(object):
         return result
 
 
+class GetAddrInfoWrapper(object):
+    _data = {}
+    _lock = None
+    _original_method = None
+
+    @staticmethod
+    def handler(*args, **kwargs):
+        with GetAddrInfoWrapper._lock:
+            name = args[0]
+            tid = threading.get_ident()
+            if tid in GetAddrInfoWrapper._data:
+                if name in GetAddrInfoWrapper._data[tid]['names']:
+                    ip = GetAddrInfoWrapper._data[tid]['ip']
+                    port = args[1]
+                    return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, '', (ip, port))]
+        return GetAddrInfoWrapper._original_method(*args, **kwargs)
+
+    @staticmethod
+    def register():
+        GetAddrInfoWrapper._lock = threading.Lock()
+        GetAddrInfoWrapper._original_method = socket.getaddrinfo
+        socket.getaddrinfo = GetAddrInfoWrapper.handler
+
+    @staticmethod
+    def set_names(names, ip):
+        with GetAddrInfoWrapper._lock:
+            GetAddrInfoWrapper._data[threading.get_ident()] = {
+                'names': names,
+                'ip': ip,
+            }
+
+
 class IpsScanner(object):
     @staticmethod
     def get_args_list(resolved_domains):
@@ -283,11 +326,15 @@ class IpsScanner(object):
             return result
 
     def _detect_scheme(self, port):
+        if options['sni_enabled']:
+            host = get_random_vhost()
+            GetAddrInfoWrapper.set_names([host], self._ip)
+        else:
+            host = self._ip
         for scheme in ['https', 'http']:
             try:
-                url = '%s://%s:%d' % (scheme, self._ip, port)
                 requests.get(
-                    url,
+                    '%s://%s:%d' % (scheme, host, port),
                     headers=self._headers,
                     allow_redirects=False,
                     verify=False,
@@ -360,7 +407,7 @@ class ProgressTracker(object):
     def __init__(self):
         self._done_counter = 0
         self._last_log_info_timestamp = None
-        self._lock = Lock()
+        self._lock = threading.Lock()
         self._start_timestamp = None
         self._total = 0
 
@@ -423,7 +470,6 @@ class VhostsFinder(object):
         def __init__(self, ip, service):
             self._ip = ip
             self._service = service
-            self._url = '%s://%s:%d' % (self._service['scheme'], self._ip, self._service['port'])
             self._session = requests.Session()
             self._session.headers.update({
                 'User-Agent': options['user_agent'],
@@ -437,11 +483,15 @@ class VhostsFinder(object):
 
         def get_response(self, vhost):
             try:
+                if options['sni_enabled']:
+                    host = vhost
+                    headers = {}
+                else:
+                    host = self._ip
+                    headers = {'Host': vhost}
                 response = self._session.get(
-                    self._url,
-                    headers={
-                        'Host': vhost,
-                    },
+                    '%s://%s:%d' % (self._service['scheme'], host, self._service['port']),
+                    headers=headers,
                     allow_redirects=False,
                     verify=False,
                     timeout=options['timeout_http']
@@ -538,10 +588,14 @@ class VhostsFinder(object):
 
     def _find_service_vhosts(self, service):
         try:
+            random_vhost1 = get_random_vhost()
+            random_vhost2 = get_random_vhost()
+            if options['sni_enabled']:
+                GetAddrInfoWrapper.set_names(self._vhost_candidates + [random_vhost1, random_vhost2], self._ip)
             http_client = VhostsFinder.HttpClient(self._ip, service)
-            reference_response = http_client.get_response(self._get_random_vhost())
+            reference_response = http_client.get_response(random_vhost1)
 
-            if not http_client.get_response(self._get_random_vhost()).is_similar(reference_response):
+            if not http_client.get_response(random_vhost2).is_similar(reference_response):
                 # Responses for random (not existing) vhosts have to be similar
                 return [], True
 
@@ -584,11 +638,6 @@ class VhostsFinder(object):
         except VhostsFinder.HttpClient.Error:
             return None, True
 
-    @staticmethod
-    def _get_random_vhost(length=8):
-        letters = string.ascii_lowercase
-        return ''.join(random.choice(letters) for _ in range(length)) + '.com'
-
 
 # # # # # # # # # # #
 # main
@@ -599,11 +648,14 @@ def main():
 
     options = ArgsParser.parse()
     requests.packages.urllib3.disable_warnings()
+    if options['sni_enabled']:
+        GetAddrInfoWrapper.register()
 
     Logger.info('Max domains to resolve: %d' % options['max_domains'])
     Logger.info('Max IPs to scan: %d' % options['max_ips'])
     Logger.info('Max vhost candidates to check: %d' % options['max_vhost_candidates'])
     Logger.info('Ports to scan: %s' % options['ports'])
+    Logger.info('SNI enabled: %s' % options['sni_enabled'])
     Logger.info('Threads number: %d' % options['threads_number'])
     Logger.info('Timeout HTTP: %.1fs' % options['timeout_http'])
     Logger.info('Timeout TCP: %.1fs' % options['timeout_tcp'])
