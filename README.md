@@ -19,6 +19,7 @@ Max domains to resolve: -1
 Max IPs to scan: -1
 Max vhost candidates to check: -1
 Ports to scan: [80, 443, 8000, 8008, 8080, 8443]
+SNI enabled: False
 Threads number: 16
 Timeout HTTP: 5.0s
 Timeout TCP: 3.0s
