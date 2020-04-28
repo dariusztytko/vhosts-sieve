@@ -72,8 +72,8 @@ Please notice that response status code is not taken into consideration. The mai
 
 ### SNI
 For the HTTPS protocol, it may be useful to send virtual host candidate name via Host header and SNI (TLS extension).
-Use *--enable-sni* option to enable SNI support.
-It is recommended to make a scan twice (with SNI enabled and without it) to get more relevant results.
+This may allow to go through poorly configured SNI proxy.
+Use *--enable-sni* option to enable SNI mode.
 
 ## Optimization
 For the large networks with thousands subdomains, it may take many hours to check all virtual host candidates. The following options can be used to speed up the process:
