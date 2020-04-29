@@ -640,6 +640,7 @@ class VhostsFinder(object):
                 else:
                     error_series_length = 0
                 if vhost:
+                    vhosts.append(vhost)
                     valid_vhosts_series_length += 1
                     if valid_vhosts_series_length > self._VALID_VHOSTS_SERIES_LENGTH_LIMIT:
                         Logger.verbose('Stopped because of too many valid vhosts (ip: %s, service: %s)' % (
@@ -647,7 +648,6 @@ class VhostsFinder(object):
                         ))
                         stopped = True
                         break
-                    vhosts.append(vhost)
                 else:
                     valid_vhosts_series_length = 0
             return vhosts, stopped
