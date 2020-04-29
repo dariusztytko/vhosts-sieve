@@ -56,7 +56,7 @@ To discover virtual hosts, the following steps are performed:
 1. Depending on the resolving result, domains are divided into two groups:
     * Resolved domains
     * Non-resolved domains (**virtual host candidates**)
-1. IP addresses of the resolved domains are scanned for the web ports (default: 80, 443, 8000, 8080, 8443)
+1. IP addresses of the resolved domains are scanned for the web ports (default: 80, 443, 8000, 8008, 8080, 8443)
 1. Virtual host candidates are validated on each open port
 
 ### Virtual host candidates validation
