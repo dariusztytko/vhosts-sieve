@@ -82,7 +82,7 @@ Use *--enable-sni* option to enable SNI mode.
 
 ## Optimization
 For the large networks with thousands subdomains, it may take many hours to check all virtual host candidates. The following options can be used to speed up the process:
-* Default scanned ports 80, 443, 8000, 8080, 8443 can be limited, e.g. to 443 only (-p, --ports-to-scan)
+* Default scanned ports 80, 443, 8000, 8008, 8080, 8443 can be limited, e.g. 443 only (-p, --ports-to-scan)
 * Number of the threads can be increased (-t, --threads-number)
 * Number of the domains to resolve can be limited (--max-domains)
 * Number of the IP addresses to scan can be limited (--max-ips)
