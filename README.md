@@ -15,6 +15,7 @@ $ amass enum -v -passive -o domains.txt -d example.com -d example-related.com
 Use vhosts-sieve.py to find virtual hosts
 ```
 $ python3 vhosts-sieve.py -d domains.txt -o vhosts.txt
+Logs dir: None
 Max domains to resolve: -1
 Max IPs to scan: -1
 Max vhost candidates to check: -1
@@ -45,6 +46,9 @@ Each line contains the following information:
 * Detected protocol (HTTP or HTTPS)
 * "Stopped" flag (please see [How it works](#how-it-works))
 * List of discovered virtual hosts (with the response status code)
+
+### Logs
+Responses of the discovered virtual hosts can be logged (*-l*, *--logs-dir* option).
 
 ## How it works
 To discover virtual hosts, the following steps are performed:

@@ -8,6 +8,7 @@ import argparse
 import datetime
 import dns.resolver
 import ipaddress
+import os
 import random
 import requests.packages.urllib3
 import socket
@@ -16,7 +17,7 @@ import sys
 import threading
 import time
 
-VERSION = '1.1'
+VERSION = '1.2'
 
 # # # # # # # # # # #
 # global options
@@ -77,6 +78,11 @@ class ArgsParser(object):
             '--enable-sni',
             help='enable sending vhost candidate name via SNI extension',
             action='store_true'
+        )
+        parser.add_argument(
+            '-l', '--logs-dir',
+            help='log responses of the discovered vhosts',
+            type=ArgsParser._check_logs_dir,
         )
         parser.add_argument(
             '--max-domains',
@@ -140,6 +146,7 @@ class ArgsParser(object):
         )
         args = parser.parse_args(sys.argv[1:])
         return {
+            'logs_dir': args.logs_dir,
             'max_domains': args.max_domains,
             'max_ips': args.max_ips,
             'max_vhost_candidates': args.max_vhost_candidates,
@@ -163,6 +170,15 @@ class ArgsParser(object):
             return float_value
         except ValueError:
             raise argparse.ArgumentTypeError('must be float')
+
+    @staticmethod
+    def _check_logs_dir(value):
+        try:
+            path = os.path.abspath(value)
+            os.makedirs(path, exist_ok=True)
+            return path
+        except OSError as e:
+            raise argparse.ArgumentTypeError(e)
 
     @staticmethod
     def _check_ports(value):
@@ -505,6 +521,10 @@ class VhostsFinder(object):
             self._status_code = response.status_code
             self._location = ''
             self._body = ''
+            self._body_full = ''
+            self._body_full = response.text
+            self._headers = response.headers
+
             if 'location' in response.headers:
                 self._location = self._parse_location_header(response.headers['location'])
             else:
@@ -513,6 +533,12 @@ class VhostsFinder(object):
 
         def get_body(self):
             return self._body
+
+        def get_body_full(self):
+            return self._body_full
+
+        def get_headers(self):
+            return self._headers
 
         def get_location(self):
             return self._location
@@ -604,7 +630,7 @@ class VhostsFinder(object):
             valid_vhosts_series_length = 0
             vhosts = []
             for vhost_candidate in get_random_items(self._vhost_candidates, -1):
-                vhost, error = self._check_vhost_candidate(vhost_candidate, http_client, reference_response)
+                vhost, error = self._check_vhost_candidate(vhost_candidate, http_client, reference_response, service)
                 if error:
                     error_series_length += 1
                     if error_series_length > self._ERROR_SERIES_LENGTH_LIMIT:
@@ -628,12 +654,24 @@ class VhostsFinder(object):
         except VhostsFinder.HttpClient.Error:
             return [], True
 
-    @staticmethod
-    def _check_vhost_candidate(vhost_candidate, http_client, reference_response):
+    def _check_vhost_candidate(self, vhost_candidate, http_client, reference_response, service):
         try:
             response = http_client.get_response(vhost_candidate)
             if response.is_similar(reference_response):
                 return None, False
+            if options['logs_dir']:
+                try:
+                    log_file_name = '%s_%d_%s_%s_%d' % (
+                        self._ip, service['port'], service['scheme'], vhost_candidate, response.get_status_code()
+                    )
+                    with open('%s/%s' % (options['logs_dir'], log_file_name), 'w') as f:
+                        headers = response.get_headers()
+                        for header_name in headers:
+                            f.write('%s: %s\n' % (header_name, headers[header_name]))
+                        f.write('\n')
+                        f.write(response.get_body_full())
+                except OSError as e:
+                    Logger.error(e)
             return '%s %d' % (vhost_candidate, response.get_status_code()), False
         except VhostsFinder.HttpClient.Error:
             return None, True
@@ -651,6 +689,7 @@ def main():
     if options['sni_enabled']:
         GetAddrInfoWrapper.register()
 
+    Logger.info('Logs dir: %s' % options['logs_dir'])
     Logger.info('Max domains to resolve: %d' % options['max_domains'])
     Logger.info('Max IPs to scan: %d' % options['max_ips'])
     Logger.info('Max vhost candidates to check: %d' % options['max_vhost_candidates'])
