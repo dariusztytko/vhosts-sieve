@@ -38,7 +38,7 @@ Saved results (4 vhosts)
 Output file contains discovered virtual hosts in the following format
 ```
 165.22.264.81 80 http False zxcv.example.com 301
-165.22.264.81 443 https False zxcv.example.com 200 dev.example.com 200 admin.exmaple.com 401
+165.22.264.81 443 https False zxcv.example.com 200 dev.example.com 200 admin.example.com 401
 ```
 Each line contains the following information:
 * IP address
